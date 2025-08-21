@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import ChatSidebar from '@/components/ChatSidebar';
 import ChatInterface from '@/components/ChatInterface';
@@ -21,45 +21,49 @@ interface Conversation {
 }
 
 const Chat = () => {
-  const [conversations, setConversations] = useState<Conversation[]>([
-    {
-      id: '1',
-      title: 'Career Path Analysis',
-      lastMessage: 'Based on your GitHub profile...',
-      timestamp: '2 hours ago',
-      messages: [
-        {
-          id: '1',
-          text: 'Hi! Can you analyze my GitHub profile and suggest a career path?',
-          sender: 'user',
-          timestamp: new Date(Date.now() - 7200000),
-        },
-        {
-          id: '2',
-          text: 'I\'d be happy to help analyze your GitHub profile! Please share your GitHub username or profile link, and I\'ll examine your repositories, programming languages, contribution patterns, and project complexity to provide personalized career recommendations.\n\nI can help identify:\n• Your strongest programming languages and frameworks\n• Project management and collaboration skills\n• Areas for skill development\n• Potential career paths that match your interests\n• Specific learning roadmaps\n\nWhat\'s your GitHub profile?',
-          sender: 'assistant',
-          timestamp: new Date(Date.now() - 7180000),
-        },
-      ],
-    },
-    {
-      id: '2',
-      title: 'React Developer Roadmap',
-      lastMessage: 'Here\'s your personalized roadmap...',
-      timestamp: '1 day ago',
-      messages: [
-        {
-          id: '3',
-          text: 'I want to become a senior React developer. What should I learn?',
-          sender: 'user',
-          timestamp: new Date(Date.now() - 86400000),
-        },
-      ],
-    },
-  ]);
-
-  const [activeConversationId, setActiveConversationId] = useState<string>('1');
+  const STORAGE_KEY = 'chat_conversations_v1';
+  const seed: Conversation = {
+    id: `seed-${Date.now()}`,
+    title: 'New Conversation',
+    lastMessage: '',
+    timestamp: 'Just now',
+    messages: [],
+  };
+  const [conversations, setConversations] = useState<Conversation[]>([seed]);
+  const [activeConversationId, setActiveConversationId] = useState<string>(seed.id);
   const [isTyping, setIsTyping] = useState(false);
+
+  // Load conversations from localStorage (or seed empty)
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (raw) {
+        const stored: Conversation[] = JSON.parse(raw).map((c: any) => ({
+          ...c,
+          messages: (c.messages || []).map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) })),
+        }));
+        setConversations(stored);
+        if (stored[0]) setActiveConversationId(stored[0].id);
+      } else {
+        const first: Conversation = {
+          id: Date.now().toString(),
+          title: 'New Conversation',
+          lastMessage: '',
+          timestamp: 'Just now',
+          messages: [],
+        };
+        setConversations([first]);
+        setActiveConversationId(first.id);
+      }
+    } catch {}
+  }, []);
+
+  // Persist to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
+    } catch {}
+  }, [conversations]);
 
   const activeConversation = conversations.find(c => c.id === activeConversationId);
   const messages = activeConversation?.messages || [];
@@ -74,16 +78,20 @@ const Chat = () => {
 
     // Update the conversation with the new message
     setConversations(prev =>
-      prev.map(conv =>
-        conv.id === activeConversationId
-          ? {
-              ...conv,
-              messages: [...conv.messages, newMessage],
-              lastMessage: messageText,
-              timestamp: 'Just now',
-            }
-          : conv
-      )
+      prev.map(conv => {
+        if (conv.id !== activeConversationId) return conv;
+        const isFirstMessage = (conv.messages?.length || 0) === 0;
+        const derivedTitle = isFirstMessage
+          ? messageText.trim().slice(0, 40) || 'New Conversation'
+          : conv.title;
+        return {
+          ...conv,
+          title: derivedTitle,
+          messages: [...conv.messages, newMessage],
+          lastMessage: messageText,
+          timestamp: 'Just now',
+        };
+      })
     );
 
     // Simulate AI response
@@ -116,6 +124,16 @@ const Chat = () => {
     // Simple response generation based on keywords
     const message = userMessage.toLowerCase();
     
+    if (message.includes('hey guide me') || message === 'guide me' || message.includes('help me') || message.includes('start')) {
+      return `Great! I can be your AI career mentor. Share your profile links so I can tailor guidance to you:
+
+• LinkedIn URL
+• GitHub URL
+• CodeChef URL
+
+Once I have these, I'll analyze your background and suggest the best next steps, roles to target, and a learning roadmap.`;
+    }
+
     if (message.includes('github') || message.includes('profile')) {
       return `I'd love to analyze your GitHub profile! Please share your GitHub username or the direct link to your profile. I'll examine:
 
@@ -191,10 +209,22 @@ What specific aspect of your career would you like to focus on today? Feel free 
   };
 
   const handleDeleteConversation = (id: string) => {
-    setConversations(prev => prev.filter(c => c.id !== id));
-    if (activeConversationId === id && conversations.length > 1) {
-      const remaining = conversations.filter(c => c.id !== id);
-      setActiveConversationId(remaining[0].id);
+    const remaining = conversations.filter(c => c.id !== id);
+    setConversations(remaining);
+    if (activeConversationId === id) {
+      if (remaining[0]) {
+        setActiveConversationId(remaining[0].id);
+      } else {
+        const first: Conversation = {
+          id: Date.now().toString(),
+          title: 'New Conversation',
+          lastMessage: '',
+          timestamp: 'Just now',
+          messages: [],
+        };
+        setConversations([first]);
+        setActiveConversationId(first.id);
+      }
     }
   };
 
@@ -219,22 +249,6 @@ What specific aspect of your career would you like to focus on today? Feel free 
         />
 
         <main className="flex-1 flex flex-col">
-          {/* Header */}
-          <header className="border-b border-border bg-card/50 backdrop-blur-sm">
-            <div className="flex items-center justify-between h-14 px-4">
-              <div className="flex items-center gap-3">
-                <SidebarTrigger asChild>
-                  <Button variant="ghost" size="sm">
-                    <Menu className="w-4 h-4" />
-                  </Button>
-                </SidebarTrigger>
-                <h1 className="font-semibold text-lg">
-                  {activeConversation?.title || 'Career Mentor'}
-                </h1>
-              </div>
-            </div>
-          </header>
-
           {/* Chat Interface */}
           <ChatInterface
             messages={messages}

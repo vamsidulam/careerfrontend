@@ -15,9 +15,7 @@ import {
 import {
   Plus,
   MessageSquare,
-  Search,
   Trash2,
-  Edit3,
   User,
   Settings,
 } from 'lucide-react';
@@ -49,13 +47,10 @@ const ChatSidebar = ({
 }: ChatSidebarProps) => {
   const { state } = useSidebar();
   const collapsed = state === 'collapsed';
-  const [searchQuery, setSearchQuery] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
 
-  const filteredConversations = conversations.filter(conv =>
-    conv.title.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredConversations = conversations;
 
   const handleRename = (id: string, currentTitle: string) => {
     setEditingId(id);
@@ -94,20 +89,7 @@ const ChatSidebar = ({
           </Button>
         </div>
 
-        {/* Search */}
-        {!collapsed && (
-          <div className="px-4 pb-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder="Search conversations..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 bg-secondary/50"
-              />
-            </div>
-          </div>
-        )}
+        
 
         {/* Conversations */}
         <SidebarGroup className="flex-1">
@@ -117,7 +99,7 @@ const ChatSidebar = ({
             </SidebarGroupLabel>
           )}
           <SidebarGroupContent>
-            <SidebarMenu className="gap-1 px-2">
+            <SidebarMenu className="space-y-3 px-3 py-2">
               {filteredConversations.map((conversation) => (
                 <SidebarMenuItem key={conversation.id}>
                   <SidebarMenuButton
@@ -125,7 +107,7 @@ const ChatSidebar = ({
                     isActive={conversation.id === activeConversationId}
                   >
                     <div
-                      className={`group flex items-center gap-3 w-full p-3 rounded-lg cursor-pointer transition-colors hover:bg-secondary/80 ${
+                      className={`group flex items-center gap-3 w-full py-3 px-4 rounded-lg cursor-pointer transition-colors hover:bg-secondary/80 ${
                         conversation.id === activeConversationId
                           ? 'bg-secondary text-foreground'
                           : 'text-muted-foreground hover:text-foreground'
@@ -146,28 +128,12 @@ const ChatSidebar = ({
                                 autoFocus
                               />
                             ) : (
-                              <>
-                                <div className="font-medium text-sm truncate mb-1">
-                                  {conversation.title}
-                                </div>
-                                <div className="text-xs text-muted-foreground truncate">
-                                  {conversation.lastMessage}
-                                </div>
-                              </>
+                              <div className="font-medium text-sm truncate">
+                                {conversation.title}
+                              </div>
                             )}
                           </div>
-                          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-6 w-6 p-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleRename(conversation.id, conversation.title);
-                              }}
-                            >
-                              <Edit3 className="w-3 h-3" />
-                            </Button>
+                          <div className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -193,14 +159,18 @@ const ChatSidebar = ({
         {/* Bottom Actions */}
         <div className="p-4 border-t border-border">
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="justify-start flex-1">
-              <User className="w-4 h-4" />
-              {!collapsed && <span className="ml-2">Profile</span>}
-            </Button>
-            {!collapsed && (
-              <Button variant="ghost" size="sm">
-                <Settings className="w-4 h-4" />
+            <div className="flex-1">
+              <Button variant="ghost" size="sm" className="justify-start w-full" disabled>
+                <User className="w-4 h-4" />
+                {!collapsed && <span className="ml-2">Profile</span>}
               </Button>
+            </div>
+            {!collapsed && (
+              <a href="/settings">
+                <Button variant="ghost" size="sm">
+                  <Settings className="w-4 h-4" />
+                </Button>
+              </a>
             )}
           </div>
         </div>

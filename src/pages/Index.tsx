@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 const Index = () => {
-  const [showRoadmap, setShowRoadmap] = useState(false);
+  const [showRoadmap] = useState(false);
 
   const features = [
     {
@@ -87,14 +87,6 @@ const Index = () => {
                     Start Your Career Journey
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </a>
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="lg"
-                  onClick={() => setShowRoadmap(true)}
-                  className="text-lg px-8 py-4 h-auto"
-                >
-                  See Sample Roadmap
                 </Button>
               </div>
 
@@ -178,6 +170,7 @@ const Index = () => {
         </div>
       </section>
 
+      
       {/* Footer */}
       <footer className="py-12 px-4 border-t border-border">
         <div className="max-w-7xl mx-auto text-center">
