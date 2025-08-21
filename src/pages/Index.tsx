@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import ChatModal from '@/components/ChatModal';
 import FeatureCard from '@/components/FeatureCard';
 import RoadmapDisplay from '@/components/RoadmapDisplay';
 import { 
@@ -16,7 +15,6 @@ import {
 } from 'lucide-react';
 
 const Index = () => {
-  const [isChatOpen, setIsChatOpen] = useState(false);
   const [showRoadmap, setShowRoadmap] = useState(false);
 
   const features = [
@@ -82,11 +80,13 @@ const Index = () => {
                 <Button 
                   variant="hero" 
                   size="lg"
-                  onClick={() => setIsChatOpen(true)}
+                  asChild
                   className="text-lg px-8 py-4 h-auto"
                 >
-                  Start Your Career Journey
-                  <ArrowRight className="w-5 h-5 ml-2" />
+                  <a href="/chat">
+                    Start Your Career Journey
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </a>
                 </Button>
                 <Button 
                   variant="outline" 
@@ -166,11 +166,13 @@ const Index = () => {
             <Button 
               variant="cta" 
               size="lg"
-              onClick={() => setIsChatOpen(true)}
+              asChild
               className="text-lg px-8 py-4 h-auto"
             >
-              Get Started Now
-              <Sparkles className="w-5 h-5 ml-2" />
+              <a href="/chat">
+                Get Started Now
+                <Sparkles className="w-5 h-5 ml-2" />
+              </a>
             </Button>
           </div>
         </div>
@@ -184,12 +186,6 @@ const Index = () => {
           </p>
         </div>
       </footer>
-
-      {/* Chat Modal */}
-      <ChatModal 
-        isOpen={isChatOpen} 
-        onClose={() => setIsChatOpen(false)} 
-      />
     </div>
   );
 };
