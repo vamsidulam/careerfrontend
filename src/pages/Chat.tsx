@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import ChatInterface from '@/components/ChatInterface';
 import { Button } from '@/components/ui/button';
-import { Plus, MessageSquare, Trash2 } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/hooks/use-toast';
 
 interface Message {
   id: string;
@@ -20,6 +23,7 @@ interface Conversation {
 
 const Chat = () => {
   const STORAGE_KEY = 'chat_conversations_v1';
+  const { toast } = useToast();
   const seed: Conversation = {
     id: `seed-${Date.now()}`,
     title: 'New Conversation',
@@ -30,6 +34,13 @@ const Chat = () => {
   const [conversations, setConversations] = useState<Conversation[]>([seed]);
   const [activeConversationId, setActiveConversationId] = useState<string>(seed.id);
   const [isTyping, setIsTyping] = useState(false);
+
+  // Profile input states
+  const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [githubUrl, setGithubUrl] = useState('');
+  const [codechefUrl, setCodechefUrl] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showProfileInput, setShowProfileInput] = useState(false);
 
   // Load conversations from localStorage (or seed empty)
   useEffect(() => {
@@ -92,6 +103,11 @@ const Chat = () => {
       })
     );
 
+    // Check if this is the "hey guide me" message
+    if (messageText.toLowerCase().includes('hey guide me') || messageText.toLowerCase().includes('guide me')) {
+      setShowProfileInput(true);
+    }
+
     // Simulate AI response
     setIsTyping(true);
     setTimeout(() => {
@@ -116,6 +132,108 @@ const Chat = () => {
       );
       setIsTyping(false);
     }, 1500);
+  };
+
+  const handleSubmitProfiles = async () => {
+    const hasAny = linkedinUrl.trim() || githubUrl.trim() || codechefUrl.trim();
+    if (!hasAny) {
+      toast({
+        title: "Error",
+        description: "Please enter at least one profile URL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      console.log('Submitting to:', `${baseUrl}/extract`);
+      
+      const response = await fetch(`${baseUrl}/extract`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          linkedin_url: linkedinUrl.trim() || null,
+          github_url: githubUrl.trim() || null,
+          codechef_url: codechefUrl.trim() || null,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('Response:', data);
+
+      // Add success message to chat
+      const successMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: `✅ Profiles submitted successfully! ${data.database_status || 'Data extracted and stored.'}`,
+        sender: 'assistant',
+        timestamp: new Date(),
+      };
+
+      setConversations(prev =>
+        prev.map(conv =>
+          conv.id === activeConversationId
+            ? {
+                ...conv,
+                messages: [...conv.messages, successMessage],
+                lastMessage: successMessage.text.substring(0, 50) + '...',
+                timestamp: 'Just now',
+              }
+            : conv
+        )
+      );
+
+      // Show toast notification
+      toast({
+        title: "Success!",
+        description: "Profiles extracted and stored in database",
+      });
+
+      // Hide profile input and clear fields
+      setShowProfileInput(false);
+      setLinkedinUrl('');
+      setGithubUrl('');
+      setCodechefUrl('');
+
+    } catch (error) {
+      console.error('Error submitting profiles:', error);
+      
+      // Add error message to chat
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: `❌ Failed to submit profiles: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        sender: 'assistant',
+        timestamp: new Date(),
+      };
+
+      setConversations(prev =>
+        prev.map(conv =>
+          conv.id === activeConversationId
+            ? {
+                ...conv,
+                messages: [...conv.messages, errorMessage],
+                lastMessage: errorMessage.text.substring(0, 50) + '...',
+                timestamp: 'Just now',
+              }
+            : conv
+        )
+      );
+
+      // Show error toast
+      toast({
+        title: "Error",
+        description: "Failed to submit profiles. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const generateResponse = (userMessage: string): string => {
@@ -204,6 +322,7 @@ What specific aspect of your career would you like to focus on today? Feel free 
 
     setConversations(prev => [newConversation, ...prev]);
     setActiveConversationId(newConversation.id);
+    setShowProfileInput(false);
   };
 
   const handleDeleteConversation = (id: string) => {
@@ -277,12 +396,90 @@ What specific aspect of your career would you like to focus on today? Feel free 
           </div>
         </div>
       </aside>
-      <main className="flex-1">
-        <ChatInterface
-          messages={messages}
-          onSendMessage={handleSendMessage}
-          isTyping={isTyping}
-        />
+      <main className="flex-1 flex flex-col">
+        {/* Profile Input Section */}
+        {showProfileInput && (
+          <div className="border-b border-border p-4 bg-card/60">
+            <div className="max-w-4xl mx-auto">
+              <h3 className="text-lg font-semibold mb-3">Enter Your Profile URLs</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="linkedin">LinkedIn URL</Label>
+                  <Input
+                    id="linkedin"
+                    placeholder="https://www.linkedin.com/in/username"
+                    value={linkedinUrl}
+                    onChange={(e) => setLinkedinUrl(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="github">GitHub URL</Label>
+                  <Input
+                    id="github"
+                    placeholder="https://github.com/username"
+                    value={githubUrl}
+                    onChange={(e) => setGithubUrl(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="codechef">CodeChef URL</Label>
+                  <Input
+                    id="codechef"
+                    placeholder="https://www.codechef.com/users/handle"
+                    value={codechefUrl}
+                    onChange={(e) => setCodechefUrl(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+              <div className="mt-4 flex items-center gap-3">
+                <Button
+                  onClick={handleSubmitProfiles}
+                  disabled={isSubmitting || (!linkedinUrl.trim() && !githubUrl.trim() && !codechefUrl.trim())}
+                  className="min-w-[120px]"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Extracting...
+                    </>
+                  ) : (
+                    'Extract Profiles'
+                  )}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setLinkedinUrl('');
+                    setGithubUrl('');
+                    setCodechefUrl('');
+                  }}
+                  disabled={isSubmitting}
+                >
+                  Clear
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowProfileInput(false)}
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Chat Interface */}
+        <div className="flex-1">
+          <ChatInterface
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            isTyping={isTyping}
+          />
+        </div>
       </main>
     </div>
   );

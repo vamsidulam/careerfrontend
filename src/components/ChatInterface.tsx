@@ -241,7 +241,7 @@ const ChatInterface = ({
                   <Send className="w-4 h-4" />
                 </Button>
               </div>
-              <p className="text-sm text-muted-foreground mt-4">Try: “Analyze my GitHub profile and suggest roles to target.”</p>
+              <p className="text-sm text-muted-foreground mt-4">Try: "Analyze my GitHub profile and suggest roles to target."</p>
             </div>
           </div>
         ) : (

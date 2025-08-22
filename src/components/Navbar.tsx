@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Menu, Settings, LogOut, MessageSquare } from 'lucide-react';
+import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react';
 
 const Navbar: React.FC = () => {
   return (
@@ -34,37 +35,14 @@ const Navbar: React.FC = () => {
             <Menu className="w-6 h-6" />
           </Button>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" className="gap-2">
-                <Avatar className="h-8 w-8">
-                  <AvatarFallback className="text-sm">CM</AvatarFallback>
-                </Avatar>
-                <span className="hidden sm:inline text-base">You</span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="text-base">Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to="/chat" className="flex items-center gap-2">
-                  <MessageSquare className="w-5 h-5" />
-                  Chat
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link to="/settings" className="flex items-center gap-2">
-                  <Settings className="w-5 h-5" />
-                  Settings
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="flex items-center gap-2">
-                <LogOut className="w-5 h-5" />
-                Sign out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <SignedIn>
+            <UserButton afterSignOutUrl="/" />
+          </SignedIn>
+          <SignedOut>
+            <SignInButton mode="modal">
+              <Button>Sign In</Button>
+            </SignInButton>
+          </SignedOut>
         </div>
       </div>
     </header>
