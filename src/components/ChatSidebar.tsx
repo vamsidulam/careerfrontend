@@ -16,8 +16,6 @@ import {
   Plus,
   MessageSquare,
   Trash2,
-  User,
-  Settings,
 } from 'lucide-react';
 
 interface Conversation {
@@ -74,32 +72,33 @@ const ChatSidebar = ({
     }
   };
 
-  return (
-    <Sidebar className="border-r border-border bg-card">
+    return (
+    <Sidebar className="border-r border-border bg-card h-full">
       <SidebarContent className="flex flex-col h-full">
-        {/* New Chat Button */}
-        <div className="p-4">
-          <Button
-            onClick={onNewChat}
-            className="w-full justify-start gap-3 h-12"
-            variant="outline"
-          >
-            <Plus className="w-4 h-4" />
-            {!collapsed && <span>New Chat</span>}
-          </Button>
-        </div>
+        {/* Conversations Section starting from New Chat */}
+        <SidebarGroup className="overflow-hidden">
+          <SidebarGroupContent className="overflow-y-auto max-h-[150px]">
+            <SidebarMenu className="space-y-2 px-3 py-2">
+              {/* New Chat Button - starting point of the conversation box */}
+              <SidebarMenuItem>
+                <SidebarMenuButton asChild>
+                  <div
+                    className="group flex items-center gap-3 w-full py-3 px-4 rounded-lg cursor-pointer transition-colors hover:bg-secondary/80 text-muted-foreground hover:text-foreground"
+                    onClick={onNewChat}
+                  >
+                    <Plus className="w-4 h-4 flex-shrink-0" />
+                    {!collapsed && (
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm">
+                          New Chat
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
 
-        
-
-        {/* Conversations */}
-        <SidebarGroup className="flex-1">
-          {!collapsed && (
-            <SidebarGroupLabel className="px-4 text-muted-foreground">
-              Recent Conversations
-            </SidebarGroupLabel>
-          )}
-          <SidebarGroupContent>
-            <SidebarMenu className="space-y-3 px-3 py-2">
+              {/* Existing conversations */}
               {filteredConversations.map((conversation) => (
                 <SidebarMenuItem key={conversation.id}>
                   <SidebarMenuButton
@@ -156,24 +155,7 @@ const ChatSidebar = ({
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {/* Bottom Actions */}
-        <div className="p-4 border-t border-border">
-          <div className="flex items-center gap-2">
-            <div className="flex-1">
-              <Button variant="ghost" size="sm" className="justify-start w-full" disabled>
-                <User className="w-4 h-4" />
-                {!collapsed && <span className="ml-2">Profile</span>}
-              </Button>
-            </div>
-            {!collapsed && (
-              <a href="/settings">
-                <Button variant="ghost" size="sm">
-                  <Settings className="w-4 h-4" />
-                </Button>
-              </a>
-            )}
-          </div>
-        </div>
+
       </SidebarContent>
     </Sidebar>
   );

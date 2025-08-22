@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import ChatSidebar from '@/components/ChatSidebar';
 import ChatInterface from '@/components/ChatInterface';
 import { Button } from '@/components/ui/button';
-import { Menu } from 'lucide-react';
+import { Plus, MessageSquare, Trash2 } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -237,27 +235,56 @@ What specific aspect of your career would you like to focus on today? Feel free 
   };
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen w-full flex bg-background">
-        <ChatSidebar
-          conversations={conversations}
-          activeConversationId={activeConversationId}
-          onSelectConversation={setActiveConversationId}
-          onNewChat={handleNewChat}
-          onDeleteConversation={handleDeleteConversation}
-          onRenameConversation={handleRenameConversation}
+    <div className="h-[calc(100vh-80px)] w-full bg-background flex">
+      <aside className="w-56 border-r border-border bg-card/80 backdrop-blur flex flex-col">
+        {/* New Chat Button */}
+        <div className="p-3 border-b border-border">
+          <Button onClick={handleNewChat} size="sm" className="w-full justify-start gap-2">
+            <Plus className="w-4 h-4" />
+            New Chat
+          </Button>
+        </div>
+        
+        {/* Recent Conversations */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-3">
+            <h3 className="text-sm font-medium text-muted-foreground mb-2">Recent Conversations</h3>
+            <div className="space-y-1">
+              {conversations.map((conversation) => (
+                <div
+                  key={conversation.id}
+                  className={`group flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors hover:bg-secondary/60 ${
+                    conversation.id === activeConversationId ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                  onClick={() => setActiveConversationId(conversation.id)}
+                >
+                  <MessageSquare className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-sm truncate flex-1">{conversation.title}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteConversation(conversation.id);
+                    }}
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </aside>
+      <main className="flex-1">
+        <ChatInterface
+          messages={messages}
+          onSendMessage={handleSendMessage}
+          isTyping={isTyping}
         />
-
-        <main className="flex-1 flex flex-col">
-          {/* Chat Interface */}
-          <ChatInterface
-            messages={messages}
-            onSendMessage={handleSendMessage}
-            isTyping={isTyping}
-          />
-        </main>
-      </div>
-    </SidebarProvider>
+      </main>
+    </div>
   );
 };
 
