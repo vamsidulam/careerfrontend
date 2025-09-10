@@ -1,364 +1,452 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import ChatMessage from '@/components/ChatMessage';
-import { Send, Square, Paperclip, Mic, Search } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Send, Mic, MicOff, Loader2 } from 'lucide-react';
+import ProfileCard from './ProfileCard';
+import ResumeDataDisplay from './ResumeDataDisplay';
+import JobCards from './JobCards';
 
 interface Message {
   id: string;
   text: string;
   sender: 'user' | 'assistant';
   timestamp: Date;
+  profileData?: any;
+  resumeData?: any;
 }
 
 interface ChatInterfaceProps {
   messages: Message[];
   onSendMessage: (message: string) => void;
-  isTyping?: boolean;
-  placeholder?: string;
+  isTyping: boolean;
+  suggestedMessages: string[];
+  isLoadingSuggestions: boolean;
+  onClearAllChats?: () => void;
+  onNewChat?: () => void;
 }
 
-const ChatInterface = ({ 
-  messages, 
-  onSendMessage, 
-  isTyping = false,
-  placeholder = "Message Career Mentor..." 
-}: ChatInterfaceProps) => {
-  const [input, setInput] = useState('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const recognitionRef = useRef<any>(null);
-  const { toast } = useToast();
+const ChatInterface: React.FC<ChatInterfaceProps> = ({
+  messages,
+  onSendMessage,
+  isTyping,
+  suggestedMessages,
+  isLoadingSuggestions,
+  onClearAllChats,
+  onNewChat,
+}) => {
+  const [inputValue, setInputValue] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [showJobs, setShowJobs] = useState(false);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Check if resume was extracted in the last message
+  useEffect(() => {
+    if (messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.sender === 'assistant' && lastMessage.resumeData) {
+        // Show jobs after a short delay to let the user see the resume data first
+        const timer = setTimeout(() => {
+          setShowJobs(true);
+        }, 2000);
+        return () => clearTimeout(timer);
+      } else {
+        // Hide jobs if the last message doesn't have resume data
+        setShowJobs(false);
+      }
+    }
+  }, [messages]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+    }
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isTyping]);
+  }, [messages]);
 
+  // Focus input when component mounts or when typing stops
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 200) + 'px';
+    if (!isTyping && inputRef.current) {
+      inputRef.current.focus();
     }
-  }, [input]);
+  }, [isTyping]);
 
-  const handleSend = () => {
-    if (!input.trim() || isGenerating) return;
-
-    setIsGenerating(true);
-    onSendMessage(input.trim());
-    setInput('');
-
-    // Simulate response delay
-    setTimeout(() => {
-      setIsGenerating(false);
-    }, 1000);
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmedValue = inputValue.trim();
+    if (trimmedValue && !isTyping) {
+      onSendMessage(trimmedValue);
+      setInputValue('');
+      // Focus back to input after sending
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 100);
+    }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      handleSend();
-    }
-  };
-
-  const stopGeneration = () => {
-    setIsGenerating(false);
-  };
-
-  const handleAttachClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files || files.length === 0) return;
-
-    const summary = Array.from(files)
-      .map((f) => `${f.name} (${Math.round(f.size / 1024)} KB)`) 
-      .join(', ');
-
-    toast({ description: `Attached: ${summary}` });
-    onSendMessage(`Attached: ${summary}`);
-    e.currentTarget.value = '';
-  };
-
-  const toggleMic = () => {
-    try {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        toast({ description: 'Speech recognition not supported in this browser.' });
-        return;
-      }
-
-      if (!isRecording) {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.interimResults = true;
-        recognition.lang = 'en-US';
-        recognition.onresult = (event: any) => {
-          let transcript = '';
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            transcript += event.results[i][0].transcript;
+      const trimmedValue = inputValue.trim();
+      if (trimmedValue && !isTyping) {
+        onSendMessage(trimmedValue);
+        setInputValue('');
+        // Focus back to input after sending
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.focus();
           }
-          setInput((prev) => (prev ? prev + ' ' : '') + transcript.trim());
-        };
-        recognition.onend = () => {
-          setIsRecording(false);
-          toast({ description: 'Recording stopped' });
-        };
-        recognition.onerror = () => {
-          setIsRecording(false);
-        };
-        recognition.start();
-        recognitionRef.current = recognition;
-        setIsRecording(true);
-        toast({ description: 'Recording… speak now' });
-      } else {
-        recognitionRef.current?.stop();
-        setIsRecording(false);
+        }, 100);
       }
-    } catch (err) {
-      setIsRecording(false);
     }
   };
 
-  const quickPrompts: string[] = ['hey guide me'];
-
-  const handleQuickPromptClick = (prompt: string) => {
-    if (isGenerating) return;
-    setIsGenerating(true);
-    onSendMessage(prompt);
-    setInput('');
-    setTimeout(() => setIsGenerating(false), 1000);
+  const handleSendClick = () => {
+    const trimmedValue = inputValue.trim();
+    if (trimmedValue && !isTyping) {
+      onSendMessage(trimmedValue);
+      setInputValue('');
+      // Focus back to input after sending
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 100);
+    }
   };
 
-  const getLastRelevantMessage = (): string => {
-    if (messages.length === 0) return '';
-    const lastUser = [...messages].reverse().find(m => m.sender === 'user');
-    return (lastUser?.text || messages[messages.length - 1].text || '').toLowerCase();
+  const startListening = () => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const recognition = new SpeechRecognition();
+      
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      
+      recognition.onstart = () => {
+        setIsListening(true);
+      };
+      
+      recognition.onresult = (event: any) => {
+        const transcript = event.results[0][0].transcript;
+        setInputValue(transcript);
+      };
+      
+      recognition.onerror = (event: any) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+      };
+      
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+      
+      recognition.start();
+    } else {
+      alert('Speech recognition is not supported in this browser.');
+    }
   };
 
-  const deriveSuggestions = (context: string): string[] => {
-    const suggestions: string[] = [];
-    const add = (arr: string[]) => arr.forEach(s => suggestions.push(s));
-
-    if (context.includes('github') || context.includes('repo')) {
-      add([
-        'Assess my top languages',
-        'Suggest improvements for my README',
-        'Recommend projects to strengthen my profile',
-        'Identify good first issues to contribute',
-      ]);
-    }
-
-    if (context.includes('linkedin') || context.includes('profile')) {
-      add([
-        'Optimize my LinkedIn headline',
-        'Rewrite my About section',
-        'List keywords for my target role',
-        'Suggest networking outreach messages',
-      ]);
-    }
-
-    if (context.includes('roadmap') || context.includes('learn') || context.includes('skills')) {
-      add([
-        'Create a 3‑month learning roadmap',
-        'Recommend courses and resources',
-        'Give 3 portfolio project ideas',
-        'Set milestones and weekly goals',
-      ]);
-    }
-
-    if (context.includes('interview') || context.includes('prepare')) {
-      add([
-        'Generate mock interview questions',
-        'ATS-check my resume summary',
-        'List DSA topics to revise',
-        'System design topics to study',
-      ]);
-    }
-
-    if (suggestions.length === 0) {
-      add([
-        'Summarize what we discussed',
-        'What should I do next?',
-        'Share the best resources for me',
-        'Suggest relevant certifications',
-        'Draft a weekly study plan',
-      ]);
-    }
-
-    // Deduplicate and cap
-    return Array.from(new Set(suggestions)).slice(0, 6);
+  const formatTime = (date: Date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const contextualSuggestions = useMemo(() => deriveSuggestions(getLastRelevantMessage()), [messages]);
+  // Input bar component
+  const InputBar = () => (
+    <div className="w-full max-w-2xl mx-auto">
+      <form onSubmit={handleSubmit} className="flex space-x-2 w-full">
+        <Input
+          ref={inputRef}
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Type your message..."
+          className="flex-1 h-12 text-base bg-gray-800 border-gray-700 text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          disabled={isTyping}
+          autoComplete="off"
+          autoFocus={!isTyping}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          onClick={startListening}
+          disabled={isTyping || isListening}
+          className="h-12 w-12 bg-gray-800 border-gray-700 text-white hover:bg-gray-700"
+        >
+          {isListening ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+        </Button>
+        <Button 
+          type="button"
+          onClick={handleSendClick}
+          disabled={!inputValue.trim() || isTyping} 
+          className="h-12 w-12 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Send className="h-5 w-5" />
+        </Button>
+      </form>
+    </div>
+  );
 
-  return (
-    <div className="flex flex-col h-full">
-      <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFilesSelected} />
-      {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto">
-        {messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full bg-background text-foreground">
-            <div className="w-full px-4 max-w-3xl text-center">
-              <h2 className="text-3xl md:text-4xl font-semibold mb-6">What are you working on?</h2>
-              <div className="flex flex-wrap justify-center gap-2 mb-4">
-                {quickPrompts.map((p, idx) => (
-                  <Button
-                    key={idx}
-                    variant="outline"
-                    size="sm"
-                    className="rounded-full"
-                    onClick={() => handleQuickPromptClick(p)}
-                  >
-                    {p}
-                  </Button>
-                ))}
-              </div>
-              <div className="flex items-center gap-3 rounded-full px-4 py-3 shadow-card bg-white/5 ring-1 ring-primary/40 hover:ring-primary/60 transition-colors">
-                <Search className="w-4 h-4 text-muted-foreground" />
-                <Input
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Ask anything"
-                  className="flex-1 bg-transparent border-none focus-visible:ring-0"
-                />
-                <Button variant="ghost" size="sm" className={`h-8 w-8 p-0 ${isRecording ? 'text-primary' : ''}`} onClick={toggleMic}>
-                  <Mic className="w-4 h-4" />
-                </Button>
-                <Button onClick={handleSend} disabled={!input.trim() || isGenerating} size="sm" className="h-8 w-8 p-0">
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-              <p className="text-sm text-muted-foreground mt-4">Try: "Analyze my GitHub profile and suggest roles to target."</p>
+  // Suggestions component
+  const Suggestions = () => (
+    <div className="w-full max-w-2xl mx-auto">
+      <div className="text-sm text-gray-300 mb-2 font-medium flex items-center justify-center">
+        <span className="mr-2">💡</span>
+        Quick responses:
+      </div>
+      <div className="flex flex-wrap gap-2 justify-center">
+        {isLoadingSuggestions ? (
+          <div className="flex items-center space-x-2">
+            <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+            <span className="text-sm text-gray-400">Loading suggestions...</span>
+          </div>
+        ) : suggestedMessages.length > 0 ? (
+          suggestedMessages.map((suggestion, index) => (
+            <Button
+              key={index}
+              variant="outline"
+              size="sm"
+              onClick={() => onSendMessage(suggestion)}
+              className="text-xs bg-blue-500 hover:bg-blue-600 border-blue-500 text-white hover:text-white transition-colors duration-200 px-3 py-1 rounded-md shadow-sm"
+            >
+              {suggestion}
+            </Button>
+          ))
+        ) : (
+          <div className="text-sm text-gray-400">
+            No suggestions available yet. Type your message below.
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  // If no messages, show centered layout
+  if (messages.length === 0) {
+    return (
+      <div className="flex flex-col h-full bg-gray-900">
+        {/* Header with New Chat button */}
+        {onNewChat && (
+          <div className="flex justify-end p-4 border-b border-gray-700">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onNewChat}
+              className="text-blue-500 border-blue-500 hover:bg-blue-500 hover:text-white transition-colors"
+            >
+              ➕ New Chat
+            </Button>
+          </div>
+        )}
+        
+        {/* Welcome Message */}
+        <div className="flex-1 flex flex-col justify-center items-center p-8">
+          <div className="w-full max-w-2xl space-y-6">
+            <div className="text-center space-y-2">
+              <h2 className="text-2xl font-bold text-white">
+                Welcome to AI Career Mentor! 🚀
+              </h2>
+              <p className="text-gray-400">
+                I'm here to help you with your career journey. Let's get started!
+              </p>
+            </div>
+
+            {/* Hey Guide Me Button */}
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={() => onSendMessage("Hey guide me")}
+                className="text-lg bg-blue-500 hover:bg-blue-600 border-blue-500 text-white hover:text-white transition-colors duration-200 px-10 py-4 rounded-xl shadow-lg"
+              >
+                🚀 Hey guide me
+              </Button>
+            </div>
+
+            {/* Input Box - Centered */}
+            <div className="flex justify-center">
+              <InputBar />
             </div>
           </div>
-        ) : (
-          <div>
-            {messages.map((message, index) => (
-              <ChatMessage
-                key={message.id}
-                message={message}
-                isLatest={index === messages.length - 1}
-              />
-            ))}
+        </div>
+      </div>
+    );
+  }
 
-            {/* Typing Indicator */}
-            {(isTyping || isGenerating) && (
-              <div className="flex gap-4 p-6 bg-secondary/20">
-                <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center">
-                  <svg
-                    viewBox="0 0 24 24"
-                    className="w-4 h-4 text-primary-foreground"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  >
-                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="font-semibold text-sm">Career Mentor</span>
+  // If there are messages, show normal layout with input at bottom
+  return (
+    <div className="flex flex-col h-full bg-gray-900 relative">
+      {/* Header with New Chat and Clear All Chats buttons */}
+      <div className="flex justify-between items-center p-4 border-b border-gray-700">
+        <div className="flex items-center space-x-2">
+          {onNewChat && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onNewChat}
+              className="text-blue-500 border-blue-500 hover:bg-blue-500 hover:text-white transition-colors"
+            >
+              ➕ New Chat
+            </Button>
+          )}
+        </div>
+        
+        {onClearAllChats && messages.length > 0 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onClearAllChats}
+            className="text-red-500 border-red-500 hover:bg-red-500 hover:text-white transition-colors"
+          >
+            🗑️ Clear All Chats
+          </Button>
+        )}
+      </div>
+      
+      {/* Messages Container - Takes available space */}
+      <div
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto p-4 space-y-4 pb-0"
+        style={{
+          scrollbarWidth: 'none',
+          msOverflowStyle: 'none',
+        }}
+      >
+        {messages.map((message) => (
+          <div
+            key={message.id}
+            className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
+          >
+            <div
+              className={`max-w-[85%] rounded-lg px-4 py-2 ${
+                message.sender === 'user'
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-gray-800 text-white'
+              }`}
+            >
+              <div className="whitespace-pre-wrap">{message.text}</div>
+              
+              {/* Display profile cards inline if profileData exists */}
+              {message.profileData && (
+                <div className="mt-4 space-y-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {message.profileData.linkedin && (
+                      <ProfileCard
+                        title="LinkedIn Profile"
+                        icon="🔗"
+                        color="bg-gradient-to-r from-blue-500 to-blue-600"
+                        data={message.profileData.linkedin}
+                        delay={0}
+                      />
+                    )}
+                    
+                    {message.profileData.github_repos && message.profileData.github_repos.length > 0 && (
+                      <ProfileCard
+                        title="GitHub Profile"
+                        icon="🐙"
+                        color="bg-gradient-to-r from-gray-700 to-gray-800"
+                        data={message.profileData.github_repos}
+                        delay={1}
+                      />
+                    )}
+                    
+                    {message.profileData.codechef && (
+                      <ProfileCard
+                        title="CodeChef Profile"
+                        icon="🏆"
+                        color="bg-gradient-to-r from-orange-500 to-orange-600"
+                        data={message.profileData.codechef}
+                        delay={2}
+                      />
+                    )}
                   </div>
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce"></div>
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.1s]"></div>
-                    <div className="w-2 h-2 bg-primary rounded-full animate-bounce [animation-delay:0.2s]"></div>
-                  </div>
                 </div>
+              )}
+              
+              {/* Display resume data inline if resumeData exists */}
+              {message.resumeData && (
+                <div className="mt-4">
+                  <ResumeDataDisplay resumeData={message.resumeData} />
+                </div>
+              )}
+              
+                             {/* Display job cards if showJobs is true and resumeData exists */}
+               {message.resumeData && (
+                 <div className="mt-4">
+                   {!showJobs && (
+                     <div className="flex justify-center mb-4">
+                       <Button
+                         onClick={() => setShowJobs(true)}
+                         className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg flex items-center space-x-2"
+                       >
+                         <span>💼</span>
+                         <span>Show Recommended Jobs</span>
+                       </Button>
+                     </div>
+                   )}
+                   
+                   {showJobs && (
+                     <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+                       <div className="flex items-center justify-between mb-4">
+                         <h3 className="text-lg font-semibold text-white flex items-center">
+                           <span className="mr-2">💼</span>
+                           Recommended Jobs Based on Your Resume
+                         </h3>
+                         <Button
+                           onClick={() => setShowJobs(false)}
+                           variant="outline"
+                           size="sm"
+                           className="text-gray-300 border-gray-600 hover:bg-gray-700"
+                         >
+                           Hide Jobs
+                         </Button>
+                       </div>
+                       <JobCards limit={6} darkTheme={true} />
+                     </div>
+                   )}
+                 </div>
+               )}
+              
+              <div className="text-xs opacity-70 mt-1">
+                {formatTime(message.timestamp)}
               </div>
-            )}
-            <div ref={messagesEndRef} />
+            </div>
+          </div>
+        ))}
+        
+        {isTyping && (
+          <div className="flex justify-start">
+            <div className="bg-gray-800 rounded-lg px-4 py-2">
+              <div className="flex items-center space-x-2">
+                <Loader2 className="w-4 h-4 animate-spin text-gray-300" />
+                <span className="text-sm text-gray-300">AI is typing...</span>
+              </div>
+            </div>
           </div>
         )}
       </div>
 
-      {/* Input Area (hidden for landing) */}
-      {messages.length > 0 && (
-      <div className="border-t border-border bg-background p-4">
-        <div className="max-w-4xl mx-auto">
-          {contextualSuggestions.length > 0 && (
-            <div className="mb-3">
-              <div className="flex flex-wrap gap-2">
-                {contextualSuggestions.map((p, idx) => (
-                  <Button
-                    key={idx}
-                    variant="outline"
-                    size="sm"
-                    className="rounded-full"
-                    onClick={() => handleQuickPromptClick(p)}
-                  >
-                    {p}
-                  </Button>
-                ))}
-              </div>
-            </div>
-          )}
-          <div className="relative rounded-2xl border border-border bg-card p-4">
-            <Textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={placeholder}
-              className="min-h-[24px] max-h-[200px] resize-none border-none bg-transparent p-0 text-base focus-visible:ring-0 scrollbar-thin"
-              rows={1}
-            />
-            
-            <div className="flex items-center justify-between mt-3">
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                  <Paperclip className="w-4 h-4" />
-                </Button>
-                <Button variant="ghost" size="sm" className={`h-8 w-8 p-0 ${isRecording ? 'text-primary' : ''}`} onClick={toggleMic}>
-                  <Mic className="w-4 h-4" />
-                </Button>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {isGenerating && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={stopGeneration}
-                    className="h-8"
-                  >
-                    <Square className="w-3 h-3 mr-1" />
-                    Stop
-                  </Button>
-                )}
-                <Button
-                  onClick={handleSend}
-                  disabled={!input.trim() || isGenerating}
-                  size="sm"
-                  className="h-8 w-8 p-0"
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
+      {/* Fixed Bottom Section */}
+      <div className="flex-shrink-0 bg-gray-900">
+        {/* Suggestions - Sticky positioned above input */}
+        {messages.length > 1 && (
+          <div className="chat-suggestions-sticky">
+            <Suggestions />
           </div>
+        )}
 
-          <div className="flex justify-center mt-2">
-            <p className="text-xs text-muted-foreground">
-              Career Mentor can make mistakes. Check important info.
-            </p>
-          </div>
+        {/* Input Area - Sticky positioned at bottom */}
+        <div className="chat-input-sticky">
+          <InputBar />
         </div>
       </div>
-      )}
     </div>
   );
 };

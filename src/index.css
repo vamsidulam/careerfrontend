@@ -113,6 +113,15 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
+
+  .hide-scrollbar {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  
+  .hide-scrollbar::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
 }
 
 /* Keyframes */
@@ -163,5 +172,130 @@
   
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold tracking-tight;
+  }
+
+  /* Hide scrollbars for webkit browsers */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Hide scrollbars for Firefox */
+  * {
+    scrollbar-width: none;
+  }
+
+  /* Hide scrollbars for IE/Edge */
+  * {
+    -ms-overflow-style: none;
+  }
+}
+
+/* Prevent page scrolling when on chat page */
+body.chat-page {
+  overflow: hidden;
+  height: 100vh;
+}
+
+/* Chat layout fixes */
+.chat-interface-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.chat-messages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  padding-bottom: 0;
+  min-height: 0; /* Important for flex child */
+}
+
+.chat-input-area {
+  background: hsl(240 10% 3.9%);
+  border-top: 1px solid hsl(240 10% 18%);
+  padding: 1rem;
+  z-index: 10;
+  flex-shrink: 0;
+  min-height: 100px; /* Input bar height */
+}
+
+.chat-suggestions-area {
+  background: hsl(240 10% 3.9%);
+  border-top: 1px solid hsl(240 10% 18%);
+  padding: 1rem;
+  flex-shrink: 0;
+  min-height: 120px; /* Suggestions area height */
+  margin-bottom: 200px; /* 200px above input bar */
+}
+
+/* Ensure input bar is always visible at bottom */
+.chat-input-sticky {
+  position: sticky;
+  bottom: 0;
+  background: hsl(240 10% 3.9%);
+  border-top: 1px solid hsl(240 10% 18%);
+  z-index: 20;
+  padding: 1rem;
+  min-height: 100px;
+}
+
+/* Suggestions positioned above input */
+.chat-suggestions-sticky {
+  position: sticky;
+  bottom: 500px; /* Position 500px from bottom of screen */
+  background: transparent; /* Remove background */
+  border: none; /* Remove border */
+  z-index: 15;
+  padding: 0.5rem 1rem;
+  min-height: auto;
+}
+
+/* Input focus and interaction improvements */
+.chat-input input:focus {
+  outline: none;
+  border-color: hsl(230 100% 69%);
+  box-shadow: 0 0 0 2px hsl(230 100% 69% / 0.2);
+}
+
+.chat-input input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Ensure input bar doesn't get hidden behind keyboard on mobile */
+@media (max-width: 768px) {
+  .chat-input-sticky {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 1rem;
+    background: hsl(240 10% 3.9%);
+    border-top: 1px solid hsl(240 10% 18%);
+    z-index: 50;
+  }
+  
+  .chat-suggestions-sticky {
+    position: fixed;
+    bottom: 120px; /* Above the input bar */
+    left: 0;
+    right: 0;
+    background: hsl(240 10% 3.9%);
+    border-top: 1px solid hsl(240 10% 18%);
+    z-index: 45;
+    padding: 0.5rem 1rem;
+  }
+}
+
+/* Prevent input from being cut off */
+.chat-interface-container {
+  padding-bottom: 120px; /* Space for fixed input bar */
+}
+
+@media (max-width: 768px) {
+  .chat-interface-container {
+    padding-bottom: 140px; /* More space on mobile */
   }
 }

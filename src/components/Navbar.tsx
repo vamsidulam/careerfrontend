@@ -11,7 +11,6 @@ import {
   DropdownMenuTrigger 
 } from '@/components/ui/dropdown-menu';
 import { Menu, Settings, LogOut, MessageSquare } from 'lucide-react';
-import { SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react';
 
 const Navbar: React.FC = () => {
   return (
@@ -35,14 +34,7 @@ const Navbar: React.FC = () => {
             <Menu className="w-6 h-6" />
           </Button>
 
-          <SignedIn>
-            <UserButton afterSignOutUrl="/" />
-          </SignedIn>
-          <SignedOut>
-            <SignInButton mode="modal">
-              <Button>Sign In</Button>
-            </SignInButton>
-          </SignedOut>
+          <Button variant="outline">Profile</Button>
         </div>
       </div>
     </header>

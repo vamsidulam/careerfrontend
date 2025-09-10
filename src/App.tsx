@@ -7,9 +7,9 @@ import Index from "./pages/Index";
 import Chat from "./pages/Chat";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import ChatInputTest from "./components/ChatInputTest";
 import React, { useEffect, useRef } from 'react';
 import Navbar from '@/components/Navbar';
-import { SignedIn, SignedOut, RedirectToSignIn, SignIn, SignUp, useUser } from "@clerk/clerk-react";
 
 const queryClient = new QueryClient();
 
@@ -22,40 +22,12 @@ const AppRoutes = () => {
       <main className={`flex-1 ${showNavbar ? 'mt-[80px]' : ''}`}>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/chat" element={<Chat />} />
           <Route
-            path="/chat"
-            element={
-              <>
-                <SignedIn>
-                  <Chat />
-                </SignedIn>
-                <SignedOut>
-                  <RedirectToSignIn />
-                </SignedOut>
-              </>
-            }
+            path="/test-input"
+            element={<ChatInputTest />}
           />
-          <Route
-            path="/settings"
-            element={
-              <>
-                <SignedIn>
-                  <Settings />
-                </SignedIn>
-                <SignedOut>
-                  <RedirectToSignIn />
-                </SignedOut>
-              </>
-            }
-          />
-          <Route
-            path="/sign-in/*"
-            element={<SignIn routing="path" path="/sign-in" />}
-          />
-          <Route
-            path="/sign-up/*"
-            element={<SignUp routing="path" path="/sign-up" />}
-          />
+          <Route path="/settings" element={<Settings />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
@@ -65,28 +37,6 @@ const AppRoutes = () => {
 };
 
 const App = () => {
-  const { isSignedIn, user } = useUser();
-  const lastSyncedKeyRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (!isSignedIn || !user) return;
-
-    const email = user.primaryEmailAddress?.emailAddress ?? "";
-    const username = user.username ?? user.fullName ?? user.id;
-    const currentKey = `${email}-${username}`;
-
-    if (lastSyncedKeyRef.current === currentKey) return;
-    lastSyncedKeyRef.current = currentKey;
-
-    const baseUrl = (import.meta as any).env?.VITE_API_BASE_URL || "http://localhost:8000";
-    fetch(`${baseUrl}/users/upsert`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, username })
-    }).catch((err) => {
-      console.error("Failed syncing user to backend", err);
-    });
-  }, [isSignedIn, user]);
 
   return (
     <QueryClientProvider client={queryClient}>

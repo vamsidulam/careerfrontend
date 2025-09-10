@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,10 +21,19 @@ const ChatBox = ({ title = 'Chat', heightClassName = 'h-[520px]' }: ChatBoxProps
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Focus input when component mounts or when typing stops
+  useEffect(() => {
+    if (!isTyping && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isTyping]);
 
   const handleSend = () => {
     const content = input.trim();
-    if (!content) return;
+    if (!content || isTyping) return;
+    
     const userMsg: Message = {
       id: Date.now().toString(),
       text: content,
@@ -33,6 +42,13 @@ const ChatBox = ({ title = 'Chat', heightClassName = 'h-[520px]' }: ChatBoxProps
     };
     setMessages(prev => [...prev, userMsg]);
     setInput('');
+
+    // Focus back to input after sending
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 100);
 
     // Simulate assistant reply
     setIsTyping(true);
@@ -48,8 +64,13 @@ const ChatBox = ({ title = 'Chat', heightClassName = 'h-[520px]' }: ChatBoxProps
     }, 800);
   };
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSend();
+  };
+
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -92,16 +113,27 @@ const ChatBox = ({ title = 'Chat', heightClassName = 'h-[520px]' }: ChatBoxProps
           </div>
 
           <div className="mt-3 flex items-center gap-2">
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={onKeyDown}
-              placeholder="Type your message"
-              className="flex-1"
-            />
-            <Button onClick={handleSend} disabled={!input.trim()}>
-              <Send className="w-4 h-4" />
-            </Button>
+            <form onSubmit={handleSubmit} className="flex items-center gap-2 w-full">
+              <Input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={onKeyDown}
+                placeholder="Type your message"
+                className="flex-1"
+                disabled={isTyping}
+                autoComplete="off"
+                autoFocus={!isTyping}
+              />
+              <Button 
+                type="button"
+                onClick={handleSend} 
+                disabled={!input.trim() || isTyping}
+                className="disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </form>
           </div>
         </div>
       </CardContent>
